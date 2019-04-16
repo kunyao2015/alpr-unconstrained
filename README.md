@@ -1,3 +1,6 @@
+## Convert python2.7 to python3.5
+
+
 # ALPR in Unscontrained Scenarios
 
 ## Introduction
@@ -27,7 +30,7 @@ In order to easily run the code, you must have installed the Keras framework wit
 $ cd darknet && make
 ```
 
-**The current version was tested in an Ubuntu 16.04 machine, with Keras 2.2.4, TensorFlow 1.5.0, OpenCV 2.4.9, NumPy 1.14 and Python 2.7.**
+**The current version was tested in an Ubuntu 16.04 machine, with Keras 2.2.4, TensorFlow 1.5.0, OpenCV 2.4.9, NumPy 1.14 and Python 3.5(2.7=>3.5).**
 
 ## Download Models
 
