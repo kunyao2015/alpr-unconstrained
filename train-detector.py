@@ -99,7 +99,7 @@ if __name__ == '__main__':
 	dg.start()
 
 	Xtrain = np.empty((batch_size,dim,dim,3),dtype='single')
-	Ytrain = np.empty((batch_size,dim/model_stride,dim/model_stride,2*4+1))
+	Ytrain = np.empty((batch_size,int(dim/model_stride),int(dim/model_stride),2*4+1))
 
 	model_path_backup = '%s/%s_backup' % (outdir,netname)
 	model_path_final  = '%s/%s_final'  % (outdir,netname)
