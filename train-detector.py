@@ -1,9 +1,10 @@
-
+# -*- coding:UTF-8 -*-
 import sys
 import numpy as np
 import cv2
 import argparse
 import keras
+import pysnooper
 
 from random import choice
 from os.path import isfile, isdir, basename, splitext
@@ -18,7 +19,7 @@ from src.data_generator import DataGenerator
 
 from pdb import set_trace as pause
 
-
+#@pysnooper.snoop('./log/file.log')
 def load_network(modelpath,input_dim):
 
 	model = load_model(modelpath)
@@ -41,8 +42,9 @@ def load_network(modelpath,input_dim):
 
 	return model, model_stride, input_shape, output_shape
 
+#@pysnooper.snoop('./log/file.log')
 def process_data_item(data_item,dim,model_stride):
-	XX,llp,pts = augment_sample(data_item[0],data_item[1].pts,dim)
+	XX,llp,pts = augment_sample(data_item[0],data_item[1].pts,dim)  # 图像数据， 标注的数据，数据统一大小208
 	YY = labels2output_map(llp,pts,dim,model_stride)
 	return XX,YY
 
@@ -66,7 +68,7 @@ if __name__ == '__main__':
 
 	iterations 	= args.iterations
 	batch_size 	= args.batch_size
-	dim 		= 208
+	dim 		= 208  # 可以针对的数据集具体进行缩放
 
 	if not isdir(outdir):
 		makedirs(outdir)
@@ -77,18 +79,19 @@ if __name__ == '__main__':
 	model.compile(loss=loss, optimizer=opt)
 
 	print('Checking input directory...')
-	Files = image_files_from_folder(train_dir)
+	Files = image_files_from_folder(train_dir)  # 所有图片文件
 
 	Data = []
 	for file in Files:
-		labfile = splitext(file)[0] + '.txt'
+		labfile = splitext(file)[0] + '.txt'  # 图片所对应的标注文件
 		if isfile(labfile):
 			L = readShapes(labfile)
 			I = cv2.imread(file)
-			Data.append([I,L[0]])
+			Data.append([I,L[0]])  
 
 	print('%d images with labels found' % len(Data))
 
+    # 数据 ，预处理函数， 输入维度， 输出数据维度， 线程数， pool_size 和min_nsamples不明了，线程处理的数据池？
 	dg = DataGenerator(	data=Data, \
 						process_data_item_func=lambda x: process_data_item(x,dim,model_stride),\
 						xshape=xshape, \
@@ -109,6 +112,8 @@ if __name__ == '__main__':
 		print('Iter. %d (of %d)' % (it+1,iterations))
 
 		Xtrain,Ytrain = dg.get_batch(batch_size)
+		#if it >2:
+		#	sys.exit()
 		train_loss = model.train_on_batch(Xtrain,Ytrain)
 
 		print('\tLoss: %f' % train_loss)

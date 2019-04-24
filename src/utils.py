@@ -52,7 +52,7 @@ def nms(Labels,iou_threshold=.5):
 
 	return SelectedLabels
 
-
+# 寻找训练文件夹中的途判文件
 def image_files_from_folder(folder,upper=True):
 	extensions = ['jpg','jpeg','png']
 	img_files  = []

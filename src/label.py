@@ -85,6 +85,8 @@ def lwrite(file_path,labels,write_probs=True):
 				fd.write('%d %f %f %f %f\n' % (cl,cc[0],cc[1],wh[0],wh[1]))
 
 
+# tl: top and left 左上角坐标 ； br： bottom and right 右下角坐标
+# 保存的都是归一化后的小数
 def dknet_label_conversion(R,img_width,img_height):
 	WH = np.array([img_width,img_height],dtype=float)
 	L  = []
@@ -97,6 +99,7 @@ def dknet_label_conversion(R,img_width,img_height):
 
 class Shape():
 
+    # pts 坐标
 	def __init__(self,pts=np.zeros((2,0)),max_sides=4,text=''):
 		self.pts = pts
 		self.max_sides = max_sides
@@ -106,7 +109,7 @@ class Shape():
 		return self.pts.shape[1] > 2
 
 	def write(self,fp):
-		fp.write('%d,' % self.pts.shape[1])
+		fp.write('%d,' % self.pts.shape[1]) #点的个数
 		ptsarray = self.pts.flatten()
 		fp.write(''.join([('%f,' % value) for value in ptsarray]))
 		fp.write('%s,' % self.text)

@@ -22,7 +22,7 @@ class DataGenerator(object):
 
 		self._data = data
 		self._process_data_item = process_data_item_func
-		self._data_item_selector = data_item_selector
+		self._data_item_selector = data_item_selector  #随即选择
 		self._xshape = xshape
 		self._yshape = yshape
 		self._nthreads = nthreads

@@ -2,12 +2,13 @@
 import cv2
 import numpy as np
 import random
+import pysnooper
 
 from src.utils 	import im2single, getWH, hsv_transform, IOU_centre_and_dims
 from src.label	import Label
 from src.projection_utils import perspective_transform, find_T_matrix, getRectPts
 
-
+#@pysnooper.snoop('./log/file.log')
 def labels2output_map(label,lppts,dim,stride):
 
 	side = ((float(dim) + 40.)/2.)/stride # 7.75 when dim = 208 and stride = 16
@@ -59,6 +60,7 @@ def flip_image_and_pts(I,pts):
 	pts = pts[...,idx]
 	return I,pts
 
+#@pysnooper.snoop('./log/file.log')
 def augment_sample(I,pts,dim):
 
 	maxsum,maxangle = 120,np.array([80.,80.,45.])
@@ -66,21 +68,26 @@ def augment_sample(I,pts,dim):
 	if angles.sum() > maxsum:
 		angles = (angles/angles.sum())*(maxangle/maxangle.sum())
 
-	I = im2single(I)
-	iwh = getWH(I.shape)
+	I = im2single(I)  # /255.0 归一化
+	iwh = getWH(I.shape) #得到宽高
 
-	whratio = random.uniform(2.,4.)
-	wsiz = random.uniform(dim*.2,dim*1.)
+	whratio = random.uniform(2.,4.) # 随即取一个2-4的值作为宽高比
+	wsiz = random.uniform(dim*.2,dim*1.) # 宽取0.2*208 到 208之间
 	
 	hsiz = wsiz/whratio
 
 	dx = random.uniform(0.,dim - wsiz)
 	dy = random.uniform(0.,dim - hsiz)
 
+    #下面涉及到整个变换
+    # In the first 3 lines, the original corner points are transformed into a rectangular bounding box with aspect ratio 
+    # varying between 2:1 and 4:1. In other words, T matrix rectifies the LP with a random aspect ratio. Then, 
+    
 	pph = getRectPts(dx,dy,dx+wsiz,dy+hsiz)
-	pts = pts*iwh.reshape((2,1))
+	pts = pts*iwh.reshape((2,1))  #将点恢复到真实坐标值
 	T = find_T_matrix(pts2ptsh(pts),pph)
-
+    #in the next two lines, a perspective transformation with random rotation (H) is combined with T to 
+    #generate the final transformation.
 	H = perspective_transform((dim,dim),angles=angles)
 	H = np.matmul(H,T)
 
