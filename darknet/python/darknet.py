@@ -99,6 +99,10 @@ letterbox_image = lib.letterbox_image
 letterbox_image.argtypes = [IMAGE, c_int, c_int]
 letterbox_image.restype = IMAGE
 
+ndarray_image = lib.ndarray_to_image
+ndarray_image.argtypes = [POINTER(c_ubyte), POINTER(c_long), POINTER(c_long)]
+ndarray_image.restype = IMAGE
+
 load_meta = lib.get_metadata
 lib.get_metadata.argtypes = [c_char_p]
 lib.get_metadata.restype = METADATA
@@ -114,6 +118,19 @@ predict_image = lib.network_predict_image
 predict_image.argtypes = [c_void_p, IMAGE]
 predict_image.restype = POINTER(c_float)
 
+# 加入show 函数
+show_image = lib.show_image
+show_image.argtypes = [IMAGE, c_char_p, c_int]
+show_image.restype = c_int
+
+
+# numpy array 转 IMAGE
+def nparray_to_image(img):
+    data = img.ctypes.data_as(POINTER(c_ubyte))
+    image = ndarray_image(data, img.ctypes.shape, img.ctypes.strides)
+
+    return image
+
 def classify(net, meta, im):
     out = predict_image(net, im)
     res = []
@@ -127,6 +144,13 @@ def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45, is_imgpath=True
         im = load_image(image, 0, 0)
     else:
         im = image
+    '''
+    print(im.w)
+    print(im.h)
+    tile = 'test'
+    tile = tile.encode('ascii')
+    show_image(im,tile, 10000)
+    '''
     num = c_int(0)
     pnum = pointer(num)
     predict_image(net, im)
