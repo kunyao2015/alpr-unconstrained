@@ -2,6 +2,9 @@ import sys
 import cv2
 import numpy as np
 import traceback
+# keras 放在这里太尼玛重要了，否则会导致load_model加载不成功，报h5py Invalid high library version bound的错误，
+# 此错误与下面 darknet.python.darknet 的引入有关
+import keras   
 
 import darknet.python.darknet as dn
 
@@ -9,25 +12,27 @@ from src.label 				import Label, lwrite, dknet_label_conversion
 from os.path 				import splitext, basename, isdir
 from os 					import makedirs
 from src.utils 				import crop_region, image_files_from_folder, im2single, nms
-from darknet.python.darknet import detect, load_image
+from darknet.python.darknet import detect, load_image, nparray_to_image
 
-from glob 						import glob
-from os.path 					import splitext, basename
 from src.keras_utils 			import load_model, detect_lp
 from src.label 					import Shape, writeShapes
+from src.drawing_utils			import draw_label, draw_losangle, write2img
 
-
+YELLOW = (  0,255,255)
+RED    = (  0,  0,255)
 
 if __name__ == '__main__':
 
 	try:
 	
-		input_video  = sys.argv[1]
-		output_dir = sys.argv[2]
+		input_video_path  = '/home/yaokun/data/03016.jpg'#sys.argv[1]
+		input_video = input_video_path.encode('ascii')
+		output_dir = '/home/yaokun/tmp'#sys.argv[2]
 
-		YELLOW = (  0,255,255)
-		RED    = (  0,  0,255)
-        # vehicle detect 
+		bname = basename(splitext(input_video_path)[0])
+
+
+		# vehicle detect 
 		vehicle_threshold = .5
 
 		vehicle_weights = 'data/vehicle-detector/yolo-voc.weights'  #.encode('ascii')
@@ -43,7 +48,9 @@ if __name__ == '__main__':
         # lp detect
 		lp_threshold = .5
 
-		wpod_net_path = 'data/lp-detector/wpod-net_update1.h5'
+		wpod_net_path = 'data/lp-detector/bak/wpod-net_update1.h5'
+		print(wpod_net_path)
+		#wpod_net_path = wpod_net_path.encode('ascii')
 		wpod_net = load_model(wpod_net_path)
 
         # ocr
@@ -68,7 +75,7 @@ if __name__ == '__main__':
 
 		cap = cv2.VideoCapture(input_video)
         frame_index = 0
-        frame_count = 0
+        #frame_count = 0
         if cap.isOpened():
             success = True
         else:
@@ -77,7 +84,9 @@ if __name__ == '__main__':
  
         while(success):
             success, frame = cap.read()
-
+			frame_index += 1
+            if frame_index % 10 != 1:
+            	continue
 
 			R,_ = detect(vehicle_net, vehicle_meta, frame ,thresh=vehicle_threshold, is_imgpath=False)
 			#print(R)
@@ -87,8 +96,7 @@ if __name__ == '__main__':
 			print('\t\t%d cars found' % len(R))
 
 			if len(R):
-
-				Iorig = frame  # 一帧图片
+	            Iorig = frame  # 原始帧图片
 				WH = np.array(Iorig.shape[1::-1],dtype=float)
 				Lcars = []
 
@@ -98,17 +106,23 @@ if __name__ == '__main__':
 					tl = np.array([cx - w/2., cy - h/2.])
 					br = np.array([cx + w/2., cy + h/2.])
 					label = Label(0,tl,br)
+					print(label.wh())
+					print(label.tl())
 					Icar = crop_region(Iorig,label) # 截取车辆区域 Icar 车辆 label 车辆坐标信息
+					Icar = Icar.astype('uint8')
 
 					Lcars.append(label)
+					draw_label(Iorig,label,color=YELLOW,thickness=3)
 
 					# lp detector
+					print('Searching for license plates using WPOD-NET')
 
 					ratio = float(max(Icar.shape[:2]))/min(Icar.shape[:2])
 					side  = int(ratio*288.)
 					bound_dim = min(side + (side%(2**4)),608)
 					print("\t\tBound dim: %d, ratio: %f" % (bound_dim,ratio))
 
+	 
 					Llp,LlpImgs,elapse = detect_lp(wpod_net,im2single(Icar),bound_dim,2**4,(240,80),lp_threshold)
 					print('\tld detection used %d s time' % elapse)
 
@@ -122,12 +136,25 @@ if __name__ == '__main__':
 
 						#cv2.imwrite('%s/%s_lp.png' % (output_dir,bname),Ilp*255.)
 						#writeShapes('%s/%s_lp.txt' % (output_dir,bname),[s])
+						lpts = Llp[0].pts*label.wh().reshape(2,1) + label.tl().reshape(2,1)
+						lptspx = lpts*np.array(Iorig.shape[1::-1],dtype=float).reshape(2,1)
+						draw_losangle(Iorig,lptspx,RED,3)
 
-						R,(width,height) = detect(ocr_net, ocr_meta, Ilp*255. ,thresh=ocr_threshold, nms=None, is_imgpath=False)
+						Ilp = Ilp*255.
+						Ilp = Ilp.astype('uint8') # 十分重要，不做这个转换，就无法识别
+						'''
+						cv2.imshow("img", Ilp)
+						cv2.waitKey(3000)
+						cv2.imwrite('%s/%s_new_lp.png' % (output_dir,bname),Ilp)	
+						'''
+						dk_image = nparray_to_image(Ilp)
+						
+						R2,(width,height) = detect(ocr_net, ocr_meta, dk_image ,thresh=ocr_threshold, nms=None, is_imgpath=False)
+						print(width,height)
 
-						if len(R):
+						if len(R2):
 
-							L = dknet_label_conversion(R,width,height)
+							L = dknet_label_conversion(R2,width,height)
 							L = nms(L,.45)
 
 							L.sort(key=lambda x: x.tl()[0])
@@ -137,13 +164,16 @@ if __name__ == '__main__':
 							#	f.write(lp_str + '\n')
 
 							print('\t\tLP: %s' % lp_str)
+							label_lp = Label(0,tl=lpts.min(1),br=lpts.max(1))
+							write2img(Iorig,label_lp,lp_str)
 
 						else:
 
 							print('No characters found')
 
-
-				lwrite('%s/%s_cars.txt' % (output_dir,bname),Lcars)
+			cv2.imshow("test.vedio", Iorig)
+		    cv2.waitKey(10)
+			#lwrite('%s/%s_cars.txt' % (output_dir,bname),Lcars)
 
 	except:
 		traceback.print_exc()
