@@ -74,19 +74,30 @@ if __name__ == '__main__':
 		print('Searching for vehicles using YOLO...')
 
 		cap = cv2.VideoCapture(input_video)
-        frame_index = 0
+
+		fps = cap.get(cv2.CAP_PROP_FPS)
+		print("fps:", fps)
+		totalFrameNumber = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+		print("总帧数:%s" % totalFrameNumber)
+
+		widht = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+		height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+		print("宽%s , 高%s:" % (width, height))
+
+		frame_index = 0
         #frame_count = 0
-        if cap.isOpened():
-            success = True
-        else:
-            success = False
-            print("Open vedio file failed!")
- 
-        while(success):
-            success, frame = cap.read()
+		if cap.isOpened():
+			success = True
+		else:
+			success = False
+			print("Open vedio file failed!")
+
+		while(success):
+			success, frame = cap.read()
 			frame_index += 1
-            if frame_index % 10 != 1:
-            	continue
+			# 跳10帧处理一次
+			if frame_index % 10 != 1:
+				continue
 
 			R,_ = detect(vehicle_net, vehicle_meta, frame ,thresh=vehicle_threshold, is_imgpath=False)
 			#print(R)
@@ -96,7 +107,7 @@ if __name__ == '__main__':
 			print('\t\t%d cars found' % len(R))
 
 			if len(R):
-	            Iorig = frame  # 原始帧图片
+				Iorig = frame  # 原始帧图片
 				WH = np.array(Iorig.shape[1::-1],dtype=float)
 				Lcars = []
 
@@ -172,7 +183,7 @@ if __name__ == '__main__':
 							print('No characters found')
 
 			cv2.imshow("test.vedio", Iorig)
-		    cv2.waitKey(10)
+			cv2.waitKey(10)
 			#lwrite('%s/%s_cars.txt' % (output_dir,bname),Lcars)
 
 	except:
